@@ -1,17 +1,17 @@
-var util = require('util');
-var MongoClient = require('mongodb').MongoClient;
-var Server = require('mongodb').Server;
-var Base = require('db-migrate-base');
-var Promise = require('bluebird');
-var log;
-var type;
+import { MongoClient } from 'mongodb'
+import Base from 'db-migrate-base'
+import Promise from 'bluebird'
 
-var MongodbDriver = Base.extend({
+let log;
+let type;
 
-  init: function(connection, internals, mongoString) {
+const MongodbDriver = Base.extend({
+
+  init: function (connection, internals, mongoString) {
     this._super(internals);
     this.connection = connection;
     this.connectionString = mongoString;
+    this._database = this.connection.options.dbName
   },
 
   /**
@@ -19,33 +19,26 @@ var MongodbDriver = Base.extend({
    *
    * @param callback
    */
-  _createMigrationsCollection: function(callback) {
-    return this._run('createCollection', this.internals.migrationTable, null)
-      .nodeify(callback);
-  },
+  _createMigrationsCollection: (callback) => this.createCollection(this.internals.migrationTable, callback),
 
+  /**
+   * An alias for _createMigrationsCollection
+   * @see #_createMigrationsCollection
+   */
+  createMigrationsTable: (callback) => this._createMigrationsCollection(callback),
 
   /**
    * Creates the seed collection
    *
    * @param callback
    */
-  _createSeedsCollection: function(callback) {
-    return this._run('createCollection', this.internals.seedTable, null)
-      .nodeify(callback);
-  },
+  _createSeedsCollection: (callback) => this.createCollection(this.internals.seedTable, callback),
 
   /**
-   * An alias for _createMigrationsCollection
+   * An alias for _createSeedsCollection
+   * @see #_createSeedsCollection
    */
-  createMigrationsTable: function(callback) {
-    this._createMigrationsCollection(callback);
-  },
-
-  /**
-   * An alias for _createSeederCollection
-   */
-  createSeedsTable: function(callback) {
+  createSeedsTable: function (callback) {
     this._createSeedsCollection(callback);
   },
 
@@ -55,51 +48,46 @@ var MongodbDriver = Base.extend({
    * @param collectionName  - The name of the collection to be created
    * @param callback
    */
-  createCollection: function(collectionName, callback) {
-    return this._run('createCollection', collectionName, null)
-      .nodeify(callback);
-  },
-
-  switchDatabase: function(options, callback) {
-
-    if(typeof(options) === 'object')
-    {
-      if(typeof(options.database) === 'string')
-        this._database = options.database;
-    }
-    else if(typeof(options) === 'string')
-    {
-      this._database = options;
-    }
-
-    return Promise.resolve().nodeify(callback);
-  },
-
-  createDatabase: function(dbName, options, callback) {
-    //Don't care at all, MongoDB auto creates databases
-    if(typeof(options) === 'function')
-      callback = options;
-
-    return Promise.resolve().nodeify(callback);
-  },
-
-  dropDatabase: function(dbName, options, callback) {
-
-    if(typeof(options) === 'function')
-      callback = options;
-
-    return this._run('dropDatabase', dbName, null)
-      .nodeify(callback);
+  createCollection: function (collectionName, callback) {
+    this.connection.db(this._database).createCollection(collectionName)
+      .then(result => callback(null, result))
+      .catch(error => callback(error, null))
   },
 
   /**
    * An alias for createCollection
-   *
-   * @param collectionName  - The name of the collection to be created
-   * @param callback
+   * @see #createCollection
    */
-  createTable: function(collectionName, callback) {
-    this.createCollection(collectionName, callback);
+  createTable: (collectionName, callback) => this.createCollection(collectionName, callback),
+
+  switchDatabase: function (options, callback) {
+    if (typeof (options) === 'object') {
+      if (typeof (options.database) === 'string')
+        this._database = options.database;
+    } else if (typeof (options) === 'string') {
+      this._database = options;
+    }
+
+    callback(null)
+  },
+
+  createDatabase: function (dbName, options, callback) {
+    // noop, MongoDB automatically creates databases
+    if (typeof options === 'function') {
+      callback = options
+    }
+
+    callback(null)
+  },
+
+  dropDatabase: function (dbName, options, callback) {
+    if (typeof options === 'function') {
+      callback = options
+    }
+
+    this.connection.dropDatabase(dbName, typeof options === 'object' ? options : {})
+      .then(result => callback(null, result))
+      .catch(error => callback(error, null))
   },
 
   /**
@@ -108,20 +96,17 @@ var MongodbDriver = Base.extend({
    * @param collectionName  - The name of the collection to be dropped
    * @param callback
    */
-  dropCollection: function(collectionName, callback) {
-    return this._run('dropCollection', collectionName, null)
-      .nodeify(callback);
+  dropCollection: function (collectionName, callback) {
+    this.connection.db(this._database).dropCollection(collectionName)
+      .then(result => callback(null, result))
+      .catch(error => callback(error, null))
   },
 
   /**
    * An alias for dropCollection
-   *
-   * @param collectionName  - The name of the collection to be dropped
-   * @param callback
+   * @see #dropCollection
    */
-  dropTable: function(collectionName, callback) {
-    this.dropCollection(collectionName, callback);
-  },
+  dropTable: (collectionName, callback) => this.dropCollection(collectionName, callback),
 
   /**
    * Renames a collection
@@ -130,22 +115,17 @@ var MongodbDriver = Base.extend({
    * @param newCollectionName - The new name of the collection
    * @param callback
    */
-  renameCollection: function(collectionName, newCollectionName, callback) {
-    return this._run('renameCollection', collectionName, {newCollection: newCollectionName})
-      .nodeify(callback);
+  renameCollection: function (collectionName, newCollectionName, callback) {
+    this.connection.db(this._database).renameCollection(collectionName, newCollectionName)
+      .then(result => callback(null, result))
+      .catch(error => callback(error, null))
   },
 
   /**
    * An alias for renameCollection
-   *
-   * @param collectionName    - The name of the existing collection to be renamed
-   * @param newCollectionName - The new name of the collection
-   * @param callback
+   * @see #renameCollection
    */
-  renameTable: function(collectionName, newCollectionName, callback) {
-    return this.renameCollection(collectionName, newCollectionName)
-      .nodeify(callback);
-  },
+  renameTable: (collectionName, newCollectionName, callback) => this.renameCollection(collectionName, newCollectionName, callback),
 
   /**
    * Adds an index to a collection
@@ -153,18 +133,19 @@ var MongodbDriver = Base.extend({
    * @param collectionName  - The collection to add the index to
    * @param indexName       - The name of the index to add
    * @param columns         - The columns to add an index on
-   * @param	unique          - A boolean whether this creates a unique index
+   * @param unique          - A boolean whether this creates a unique index
+   * @parma callback
    */
-  addIndex: function(collectionName, indexName, columns, unique, callback) {
-
-    var options = {
+  addIndex: function (collectionName, indexName, columns, unique, callback) {
+    const options = {
       indexName: indexName,
       columns: columns,
       unique: unique
-    };
+    }
 
-    return this._run('createIndex', collectionName, options)
-      .nodeify(callback);
+    this.connection.db(this._database).createIndex(collectionName, options)
+      .then(result => callback(null, result))
+      .catch(error => callback(error, null))
   },
 
   /**
@@ -172,11 +153,12 @@ var MongodbDriver = Base.extend({
    *
    * @param collectionName  - The collection to remove the index
    * @param indexName       - The name of the index to remove
-   * @param columns
+   * @param callback
    */
-  removeIndex: function(collectionName, indexName, callback) {
-    return this._run('dropIndex', collectionName, {indexName: indexName})
-      .nodeify(callback);
+  removeIndex: function (collectionName, indexName, callback) {
+    this.connection.db(this._database).dropIndex(collectionName, indexName)
+      .then(result => callback(null, result))
+      .catch(error => callback(error, null))
   },
 
   /**
@@ -186,9 +168,10 @@ var MongodbDriver = Base.extend({
    * @param toInsert        - The record(s) to insert
    * @param callback
    */
-  insert: function(collectionName, toInsert, callback) {
-    return this._run('insert', collectionName, toInsert)
-      .nodeify(callback);
+  insert: function (collectionName, toInsert, callback) {
+    this.connection.db(this._database).insert(collectionName, toInsert)
+      .then(result => callback(null, result))
+      .catch(error => callback(error, null))
   },
 
   /**
@@ -198,8 +181,7 @@ var MongodbDriver = Base.extend({
    * @param callback
    */
   addMigrationRecord: function (name, callback) {
-    return this._run('insert', this.internals.migrationTable, {name: name, run_on: new Date()})
-      .nodeify(callback);
+    this.insert(this.internals.migrationTable, {name: name, run_on: new Date()}, callback)
   },
 
   /**
@@ -209,20 +191,19 @@ var MongodbDriver = Base.extend({
    * @param callback
    */
   addSeedRecord: function (name, callback) {
-    return this._run('insert', this.internals.seedTable, {name: name, run_on: new Date()})
-      .nodeify(callback);
+    this.insert(this.internals.seedTable, {name: name, run_on: new Date()}, callback)
   },
-  
+
   /**
    * Returns the DB instance so custom updates can be made.
    * NOTE: This method exceptionally does not call close() on the database driver when the promise resolves. So the getDbInstance method caller
-   * needs to call .close() on it's own after finish working with the database driver.
+   * needs to call .close() on its own after finish working with the database driver.
    *
    * @param callback with the database driver as 2nd callback argument
    */
   getDbInstance: function (callback) {
-    return this._run('getDbInstance', null, {run_on: new Date()})
-      .nodeify(callback);
+    const dbInstance = this.connection.db(this._database)
+    callback(null, dbInstance)
   },
 
   /**
@@ -232,9 +213,10 @@ var MongodbDriver = Base.extend({
    * @param query           - The query to run
    * @param callback
    */
-  _find: function(collectionName, query, callback) {
-    return this._run('find', collectionName, query)
-      .nodeify(callback);
+  _find: function (collectionName, query, callback) {
+    this.connection.db(this._database).collection(collectionName).find(query)
+      .then(result => callback(null, result))
+      .catch(error => callback(error, null))
   },
 
   /**
@@ -242,9 +224,10 @@ var MongodbDriver = Base.extend({
    *
    * @param callback  - The callback to call with the collection names
    */
-  _getCollectionNames: function(callback) {
-    return this._run('collections', null, null)
-      .nodeify(callback);
+  _getCollectionNames: function (callback) {
+    this.connection.db(this._database).collections({nameOnly: true})
+      .then(result => callback(null, result.map(c => c.collectionName)))
+      .catch(error => callback(error, null))
   },
 
   /**
@@ -253,138 +236,17 @@ var MongodbDriver = Base.extend({
    * @param collectionName  - The name of the collection to get the indexes for
    * @param callback        - The callback to call with the collection names
    */
-  _getIndexes: function(collectionName, callback) {
-    return this._run('indexInformation', collectionName, null)
-      .nodeify(callback);
-  },
-
-  /**
-   * Gets a connection and runs a mongo command and returns the results
-   *
-   * @param command     - The command to run against mongo
-   * @param collection  - The collection to run the command on
-   * @param options     - An object of options to be used based on the command
-   * @param callback    - A callback to return the results
-   */
-  _run: function(command, collection, options, callback) {
-
-    var args = this._makeParamArgs(arguments),
-        sort = null,
-        callback = args[2];
-
-    log.sql.apply(null, arguments);
-
-    if(options && typeof(options) === 'object') {
-
-      if(options.sort)
-        sort = options.sort;
-    }
-
-    if(this.internals.dryRun) {
-      return Promise.resolve().nodeify(callback);
-    }
-
-    return new Promise(function(resolve, reject) {
-      var prCB = function(err, data) {
-        return (err ? reject(err) : resolve(data));
-      };
-
-      // Get a connection to mongo
-      this.connection.connect(this.connectionString, function(err, db) {
-
-        if(err) {
-          prCB(err);
-        }
-
-        // Callback function to return mongo records
-        var callbackFunction = function(err, data) {
-
-          if(err) {
-            prCB(err);
-          }
-
-          prCB(null, data);
-          db.close();
-        };
-
-        // Depending on the command, we need to use different mongo methods
-        switch(command) {
-          case 'find':
-
-            if(sort) {
-              db.collection(collection)[command](options.query).sort(sort).toArray(callbackFunction);
-            }
-            else {
-              db.collection(collection)[command](options).toArray(callbackFunction);
-            }
-            break;
-          case 'renameCollection':
-            db[command](collection, options.newCollection, callbackFunction);
-            break;
-          case 'createIndex':
-            db[command](collection, options.columns, {name: options.indexName, unique: options.unique}, callbackFunction);
-            break;
-          case 'dropIndex':
-            db.collection(collection)[command](options.indexName, callbackFunction);
-            break;
-          case 'insert':
-            // options is the records to insert in this case
-            if(util.isArray(options))
-              db.collection(collection).insertMany(options, {}, callbackFunction);
-            else
-              db.collection(collection).insertOne(options, {}, callbackFunction);
-            break;
-          case 'remove':
-            // options is the records to insert in this case
-            if(util.isArray(options))
-              db.collection(collection).deleteMany(options, callbackFunction);
-            else
-              db.collection(collection).deleteOne(options, callbackFunction);
-            break;
-          case 'collections':
-            db.collections(callbackFunction);
-            break;
-          case 'indexInformation':
-            db.indexInformation(collection, callbackFunction);
-            break;
-          case 'dropDatabase':
-            db.dropDatabase(callbackFunction);
-            break;
-          case 'update':
-            db.collection(collection)[command](options.query, options.update, options.options, callbackFunction);
-            break;
-          case 'updateMany':
-            db.collection(collection)[command](options.query, options.update, options.options, callbackFunction);
-            break;
-          case 'getDbInstance':
-            prCB(null, db); // When the user wants to get the DB instance we need to return the promise callback, so the DB connection is not automatically closed
-            break;
-          default:
-            db[command](collection, callbackFunction);
-            break;
-        }
-      });
-    }.bind(this)).nodeify(callback);
-  },
-
-  _makeParamArgs: function(args) {
-    var params = Array.prototype.slice.call(args);
-    var sql = params.shift();
-    var callback = params.pop();
-
-    if (params.length > 0 && Array.isArray(params[0])) {
-      params = params[0];
-    }
-
-    return [sql, params, callback];
+  _getIndexes: function (collectionName, callback) {
+    this.connection.db(this._database).collection(collectionName).indexInformation()
+      .then(result => callback(null, result))
+      .catch(error => callback(error, null))
   },
 
   /**
    * Runs a NoSQL command regardless of the dry-run param
    */
-  _all: function() {
-    var args = this._makeParamArgs(arguments);
-    return this.connection.query.apply(this.connection, args);
+  _all: function () {
+    throw new Error('Method not implemented.')
   },
 
   /**
@@ -392,9 +254,8 @@ var MongodbDriver = Base.extend({
    *
    * @param callback
    */
-  allLoadedMigrations: function(callback) {
-    return this._run('find', this.internals.migrationTable, { sort: { run_on: -1 } })
-      .nodeify(callback);
+  allLoadedMigrations: function (callback) {
+    this._find(this.internals.migrationTable, {sort: {run_on: -1}}, callback)
   },
 
   /**
@@ -402,9 +263,8 @@ var MongodbDriver = Base.extend({
    *
    * @param callback
    */
-  allLoadedSeeds: function(callback) {
-    return this._run('find', this.internals.seedTable, { sort: { run_on: -1 } })
-      .nodeify(callback);
+  allLoadedSeeds: function (callback) {
+    this._find(this.internals.seedTable, {sort: {run_on: -1}}, callback)
   },
 
   /**
@@ -413,9 +273,10 @@ var MongodbDriver = Base.extend({
    * @param migrationName       - The name of the migration to be deleted
    * @param callback
    */
-  deleteMigration: function(migrationName, callback) {
-    return this._run('remove', this.internals.migrationTable, {name: migrationName})
-      .nodeify(callback);
+  deleteMigration: function (migrationName, callback) {
+    this.connection.db(this._database).collection(this.internals.migrationTable).deleteOne({name: migrationName})
+      .then(result => callback(null, result))
+      .catch(error => callback(error, null))
   },
 
   /**
@@ -424,36 +285,37 @@ var MongodbDriver = Base.extend({
    * @param migrationName       - The name of the migration to be deleted
    * @param callback
    */
-  deleteSeed: function(migrationName, callback) {
-    return this._run('remove', this.internals.seedTable, {name: migrationName})
-      .nodeify(callback);
+  deleteSeed: function (migrationName, callback) {
+    this.connection.db(this._database).collection(this.internals.seedTable).deleteOne({name: migrationName})
+      .then(result => callback(null, result))
+      .catch(error => callback(error, null))
   },
 
   /**
    * Closes the connection to mongodb
    */
-  close: function(callback) {
-    return Promise.resolve().nodeify(callback);
+  close: function (callback) {
+    this.connection.close()
+      .then(_ => callback(null))
+      .catch(error => callback(error, null))
   },
 
-  buildWhereClause: function() {
-
-    return Promise.reject('There is no NoSQL implementation yet!');
+  buildWhereClause: function () {
+    throw new Error('There is no NoSQL implementation yet!')
   },
 
-  update: function() {
-
-    return Promise.reject('There is no NoSQL implementation yet!');
+  update: function () {
+    throw new Error('There is no NoSQL implementation yet!')
   }
 });
 
 Promise.promisifyAll(MongodbDriver);
 
-function parseColonString( config, port, length ) {
+function parseColonString(config, port, length) {
 
-  var result = '';
+  let result = '';
 
-  for(var i = 0; i < length; ++i) {
+  for (let i = 0; i < length; ++i) {
 
     result += config.host[i] + ((config.host[i].indexOf(':') === -1) ?
       ':' + port : '') + ',';
@@ -462,11 +324,11 @@ function parseColonString( config, port, length ) {
   return result.substring(0, result.length - 1);
 }
 
-function parseObjects( config, port, length ) {
+function parseObjects(config, port, length) {
 
-  var result = '';
+  let result = '';
 
-  for(var i = 0; i < length; ++i) {
+  for (let i = 0; i < length; ++i) {
 
     result += config.host[i].host + ((!config.host[i].port) ?
       ':' + port : ':' + config.host[i].port) + ',';
@@ -479,51 +341,60 @@ function parseObjects( config, port, length ) {
  * Gets a connection to mongo
  *
  * @param config    - The config to connect to mongo
+ * @param intern    - "internals"
  * @param callback  - The callback to call with a MongodbDriver object
  */
-exports.connect = function(config, intern, callback) {
-  var db;
-  var port;
-  var host;
+export function connect(config, intern, callback) {
+  let port;
+  let host;
 
-  var internals = intern;
+  const internals = intern;
 
   log = internals.mod.log;
   type = internals.mod.type;
 
   // Make sure the database is defined
-  if(config.database === undefined) {
+  if (config.database === undefined) {
     throw new Error('database must be defined in database.json');
   }
 
-  if(config.port === undefined) {
+  if (config.url !== undefined) {
+    const db = config.db || new MongoClient(config.url, config.options ?? {})
+    if (typeof callback !== 'function') {
+      return new MongodbDriver(db, intern, config.url)
+    }
+    callback(null, new MongodbDriver(db, intern, config.url))
+    return
+  }
+
+  if (config.port === undefined) {
     port = 27017;
   } else {
     port = config.port;
   }
 
-  config.host = util.isArray(config.hosts) ? config.hosts : config.host;
+  config.host = Array.isArray(config.hosts) ? config.hosts : config.host;
 
-  if(config.host === undefined) {
+  if (config.host === undefined) {
 
     host = 'localhost' + ':' + port;
-  } else if(util.isArray(config.host) ) {
+  } else if (Array.isArray(config.host)) {
 
-    var length = config.host.length;
+    const length = config.host.length;
     host = '';
 
-    if(typeof(config.host[0]) === 'string')
+    if (typeof (config.host[0]) === 'string')
       host = parseColonString(config, port, length);
-    else
+    else {
       host = parseObjects(config, port, length);
+    }
   } else {
-
     host = config.host + ':' + port;
   }
 
-  var mongoString = 'mongodb://';
+  let mongoString = 'mongodb://';
 
-  if(config.user !== undefined && config.password !== undefined) {
+  if (config.user !== undefined && config.password !== undefined) {
     // Ensure user and password can contain special characters like "@" so app doesn't throw an exception when connecting to MongoDB
     config.user = encodeURIComponent(config.user);
     config.password = encodeURIComponent(config.password);
@@ -533,24 +404,28 @@ exports.connect = function(config, intern, callback) {
 
   mongoString += host + '/' + config.database;
 
-  var extraParams = [];
+  const extraParams = [];
   if (config.ssl) {
     extraParams.push('ssl=true');
   }
 
-  if(config.authSource !== undefined && config.user !== undefined && config.password !== undefined) {
+  if (config.authSource !== undefined && config.user !== undefined && config.password !== undefined) {
     extraParams.push('authSource=' + config.authSource);
   }
 
-  if (config.replicaSet){
+  if (config.replicaSet) {
     extraParams.push('replicaSet=' + config.replicaSet);
   }
 
-  if(extraParams.length > 0){
-      mongoString += '?' + extraParams.join('&');
+  if (extraParams.length > 0) {
+    mongoString += '?' + extraParams.join('&');
   }
 
+  const db = config.db || new MongoClient(mongoString, config.options ?? {});
+  if (typeof callback !== 'function') {
+    return new MongodbDriver(db, intern, mongoString)
+  }
+  callback(null, new MongodbDriver(db, intern, mongoString))
+}
+  
 
-  db = config.db || new MongoClient(new Server(host, port));
-  callback(null, new MongodbDriver(db, intern, mongoString));
-};
