@@ -1,7 +1,6 @@
-[![Backers on Open Collective](https://opencollective.com/node-db-migrate/backers/badge.svg)](#backers) [![Sponsors on Open Collective](https://opencollective.com/node-db-migrate/sponsors/badge.svg)](#sponsors)
-[![Build Status](https://github.com/db-migrate/mongo/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/db-migrate/mongo/actions/workflows/ci.yml)
-[![Documentation Status](https://readthedocs.org/projects/db-migrate/badge/?version=latest)](https://readthedocs.org/projects/db-migrate/?badge=latest)
+[![CI](https://github.com/ggrossetie/db-migrate-mongodb/actions/workflows/ci.yml/badge.svg)](https://github.com/ggrossetie/db-migrate-mongodb/actions/workflows/ci.yml)
 
-# mongodb
+# MongoDB driver for db-migrate
 
-mongodb driver for db-migrate
+`db-migrate` is a database migration framework for Node.
+This driver allows you to apply migration scripts to a MongoDB database via `db-migrate`.
