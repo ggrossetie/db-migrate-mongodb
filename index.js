@@ -216,17 +216,13 @@ const MongodbDriver = Base.extend({
 
   /**
    * Returns the DB instance so custom updates can be made.
-   * NOTE: This method exceptionally does not call close() on the database driver when the promise resolves. So the getDbInstance method caller
-   * needs to call .close() on its own after finish working with the database driver.
+   * NOTE: This method exceptionally does not call close() on the database driver when the promise resolves. 
+   * So the getDbInstance method caller needs to call .close() on its own after finish working with the database driver.
    *
-   * @param callback with the database driver as 2nd callback argument
+   * @returns {Db} a database instance
    */
-  getDbInstance: function (callback) {
-    const dbInstance = this.connection.db(this._database)
-    if (typeof callback !== 'function') {
-      return dbInstance
-    }
-    return dbInstance
+  getDbInstance: function () {
+    return this.connection.db(this._database)
   },
 
   /**
