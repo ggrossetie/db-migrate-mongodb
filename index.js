@@ -181,7 +181,7 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   insert: function (collectionName, toInsert, callback) {
-    this.connection.db(this._database).insert(collectionName, toInsert)
+    this.connection.db(this._database).collection(collectionName).insertOne(toInsert)
       .then(result => callback(null, result))
       .catch(error => callback(error, null))
   },
@@ -226,7 +226,7 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   _find: function (collectionName, query, callback) {
-    this.connection.db(this._database).collection(collectionName).find(query)
+    this.connection.db(this._database).collection(collectionName).find(query).toArray()
       .then(result => callback(null, result))
       .catch(error => callback(error, null))
   },

@@ -36,6 +36,8 @@ export function getDriver(connectionString) {
     createCollection: async (name) => await _call(driver, 'createCollection', [name]),
     _getCollectionNames: async () => await _call(driver, '_getCollectionNames', []),
     close: async () => await _call(driver, 'close', []),
+    _find: async(collectionName, query) => await _call(driver, '_find', [collectionName, query]),
+    insert: async(collectionName, toInsert) => await _call(driver, 'insert', [collectionName, toInsert])
   }
 
   return driver

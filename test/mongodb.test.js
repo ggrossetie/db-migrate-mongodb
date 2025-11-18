@@ -33,4 +33,20 @@ describe('mongodb', function () {
       await driver.async.close()
     }
   })
+
+  it('should find a document', async () => {
+    const connectionString = container.getConnectionString()
+    const driver = getDriver(connectionString)
+    try {
+      await driver.async.createCollection('documents')
+      const emptyResult = await driver.async._find('documents', {name: 'foo'})
+      assert.deepEqual(emptyResult, [])
+      await driver.async.insert('documents', {name: 'foo'})
+      const docs = await driver.async._find('documents', {name: 'foo'})
+      assert.equal(docs.length, 1)
+      assert.equal(docs[0].name, 'foo')
+    } finally {
+      await driver.async.close()
+    }
+  })
 })
