@@ -1,6 +1,6 @@
 {
   "name": "@ggrossetie/db-migrate-mongodb",
-  "version": "2.0.0-beta.2",
+  "version": "2.0.0-beta.3",
   "description": "mongodb driver for db-migrate",
   "main": "index.js",
   "publishConfig": {
