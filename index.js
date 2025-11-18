@@ -273,7 +273,7 @@ const MongodbDriver = Base.extend({
    *
    * @returns {Db} a database instance
    */
-  getDbInstance: function () {
+  _getDbInstance: function () {
     return this.connection.db(this._database)
   },
 
