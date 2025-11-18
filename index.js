@@ -19,20 +19,26 @@ const MongodbDriver = Base.extend({
    *
    * @param callback
    */
-  _createMigrationsCollection: (callback) => this.createCollection(this.internals.migrationTable, callback),
+  _createMigrationsCollection: function (callback) {
+    this.createCollection(this.internals.migrationTable, callback)
+  },
 
   /**
    * An alias for _createMigrationsCollection
    * @see #_createMigrationsCollection
    */
-  createMigrationsTable: (callback) => this._createMigrationsCollection(callback),
+  createMigrationsTable: function (callback) {
+    this._createMigrationsCollection(callback)
+  },
 
   /**
    * Creates the seed collection
    *
    * @param callback
    */
-  _createSeedsCollection: (callback) => this.createCollection(this.internals.seedTable, callback),
+  _createSeedsCollection: function (callback) {
+    this.createCollection(this.internals.seedTable, callback)
+  },
 
   /**
    * An alias for _createSeedsCollection
@@ -58,7 +64,9 @@ const MongodbDriver = Base.extend({
    * An alias for createCollection
    * @see #createCollection
    */
-  createTable: (collectionName, callback) => this.createCollection(collectionName, callback),
+  createTable: function (collectionName, callback) {
+    this.createCollection(collectionName, callback)
+  },
 
   switchDatabase: function (options, callback) {
     if (typeof (options) === 'object') {
@@ -106,7 +114,9 @@ const MongodbDriver = Base.extend({
    * An alias for dropCollection
    * @see #dropCollection
    */
-  dropTable: (collectionName, callback) => this.dropCollection(collectionName, callback),
+  dropTable: function (collectionName, callback) {
+    this.dropCollection(collectionName, callback)
+  },
 
   /**
    * Renames a collection
@@ -125,7 +135,9 @@ const MongodbDriver = Base.extend({
    * An alias for renameCollection
    * @see #renameCollection
    */
-  renameTable: (collectionName, newCollectionName, callback) => this.renameCollection(collectionName, newCollectionName, callback),
+  renameTable: function (collectionName, newCollectionName, callback) {
+    this.renameCollection(collectionName, newCollectionName, callback)
+  },
 
   /**
    * Adds an index to a collection
