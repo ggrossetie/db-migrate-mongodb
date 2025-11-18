@@ -223,7 +223,10 @@ const MongodbDriver = Base.extend({
    */
   getDbInstance: function (callback) {
     const dbInstance = this.connection.db(this._database)
-    callback(null, dbInstance)
+    if (typeof callback !== 'function') {
+      return dbInstance
+    }
+    return dbInstance
   },
 
   /**
