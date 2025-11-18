@@ -19,27 +19,11 @@ const internals = {
 }
 
 export function getDriver(connectionString) {
-  const driver = connect({
+  return connect({
     url: connectionString,
     database: "db_migrate_test",
     options: {
       directConnection: true
     }
   }, internals)
-
-  async function _call(driver, functionName, args) {
-    const promisifyFun = promisify(driver[functionName]).bind(driver)
-    return await promisifyFun(...args)
-  }
-
-  driver['async'] = {
-    createCollection: async (name) => await _call(driver, 'createCollection', [name]),
-    _getCollectionNames: async () => await _call(driver, '_getCollectionNames', []),
-    close: async () => await _call(driver, 'close', []),
-    _find: async(collectionName, query) => await _call(driver, '_find', [collectionName, query]),
-    insert: async(collectionName, toInsert) => await _call(driver, 'insert', [collectionName, toInsert]),
-    _createMigrationsCollection: async() => await _call(driver, '_createMigrationsCollection', []),
-  }
-
-  return driver
 }

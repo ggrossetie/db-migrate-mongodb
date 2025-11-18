@@ -1,6 +1,5 @@
 import { MongoClient } from 'mongodb'
 import Base from 'db-migrate-base'
-import Promise from 'bluebird'
 
 let log;
 let type;
@@ -20,15 +19,29 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   _createMigrationsCollection: function (callback) {
-    this.createCollection(this.internals.migrationTable, (error, result) => {
-      // NamespaceExists
-      if (error && error.errorResponse && error.errorResponse.code === 48) {
-        // ignore
-        callback(null, result)
-        return
-      }
-      callback(error, result)
-    })
+    if (typeof callback !== 'function') {
+      return this.createCollection(this.internals.migrationTable)
+        .catch(error => {
+          // NamespaceExists
+          if (error && error.errorResponse && error.errorResponse.code === 48) {
+            // ignore
+          } else {
+            throw error
+          }
+        })
+    }
+
+    if (typeof callback === 'function') {
+      this.createCollection(this.internals.migrationTable, (error, result) => {
+        // NamespaceExists
+        if (error && error.errorResponse && error.errorResponse.code === 48) {
+          // ignore
+          callback(null, result)
+          return
+        }
+        callback(error, result)
+      })
+    }
   },
 
   /**
@@ -63,7 +76,11 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   createCollection: function (collectionName, callback) {
-    this.connection.db(this._database).createCollection(collectionName)
+    const promise = this.connection.db(this._database).createCollection(collectionName)
+    if (typeof callback !== 'function') {
+      return promise
+    }
+    promise
       .then(result => callback(null, result))
       .catch(error => callback(error, null))
   },
@@ -78,13 +95,16 @@ const MongodbDriver = Base.extend({
 
   switchDatabase: function (options, callback) {
     if (typeof (options) === 'object') {
-      if (typeof (options.database) === 'string')
+      if (typeof (options.database) === 'string') {
         this._database = options.database;
+      }
     } else if (typeof (options) === 'string') {
       this._database = options;
     }
 
-    callback(null)
+    if (typeof callback === 'function') {
+      callback(null)
+    }
   },
 
   createDatabase: function (dbName, options, callback) {
@@ -93,7 +113,9 @@ const MongodbDriver = Base.extend({
       callback = options
     }
 
-    callback(null)
+    if (typeof callback === 'function') {
+      callback(null)
+    }
   },
 
   dropDatabase: function (dbName, options, callback) {
@@ -101,7 +123,12 @@ const MongodbDriver = Base.extend({
       callback = options
     }
 
-    this.connection.dropDatabase(dbName, typeof options === 'object' ? options : {})
+    const promise = this.connection.dropDatabase(dbName, typeof options === 'object' ? options : {})
+    if (typeof callback !== 'function') {
+      return promise
+    }
+
+    promise
       .then(result => callback(null, result))
       .catch(error => callback(error, null))
   },
@@ -113,7 +140,12 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   dropCollection: function (collectionName, callback) {
-    this.connection.db(this._database).dropCollection(collectionName)
+    const promise = this.connection.db(this._database).dropCollection(collectionName)
+    if (typeof callback !== 'function') {
+      return promise
+    }
+
+    promise
       .then(result => callback(null, result))
       .catch(error => callback(error, null))
   },
@@ -134,7 +166,12 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   renameCollection: function (collectionName, newCollectionName, callback) {
-    this.connection.db(this._database).renameCollection(collectionName, newCollectionName)
+    const promise = this.connection.db(this._database).renameCollection(collectionName, newCollectionName)
+    if (typeof callback !== 'function') {
+      return promise
+    }
+
+    promise
       .then(result => callback(null, result))
       .catch(error => callback(error, null))
   },
@@ -163,7 +200,12 @@ const MongodbDriver = Base.extend({
       unique: unique
     }
 
-    this.connection.db(this._database).createIndex(collectionName, options)
+    const promise = this.connection.db(this._database).createIndex(collectionName, options)
+    if (typeof callback !== 'function') {
+      return promise
+    }
+
+    promise
       .then(result => callback(null, result))
       .catch(error => callback(error, null))
   },
@@ -176,7 +218,12 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   removeIndex: function (collectionName, indexName, callback) {
-    this.connection.db(this._database).dropIndex(collectionName, indexName)
+    const promise = this.connection.db(this._database).dropIndex(collectionName, indexName)
+    if (typeof callback !== 'function') {
+      return promise
+    }
+
+    promise
       .then(result => callback(null, result))
       .catch(error => callback(error, null))
   },
@@ -189,7 +236,12 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   insert: function (collectionName, toInsert, callback) {
-    this.connection.db(this._database).collection(collectionName).insertOne(toInsert)
+    const promise = this.connection.db(this._database).collection(collectionName).insertOne(toInsert)
+    if (typeof callback !== 'function') {
+      return promise
+    }
+
+    promise
       .then(result => callback(null, result))
       .catch(error => callback(error, null))
   },
@@ -216,7 +268,7 @@ const MongodbDriver = Base.extend({
 
   /**
    * Returns the DB instance so custom updates can be made.
-   * NOTE: This method exceptionally does not call close() on the database driver when the promise resolves. 
+   * NOTE: This method exceptionally does not call close() on the database driver when the promise resolves.
    * So the getDbInstance method caller needs to call .close() on its own after finish working with the database driver.
    *
    * @returns {Db} a database instance
@@ -233,7 +285,12 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   _find: function (collectionName, query, callback) {
-    this.connection.db(this._database).collection(collectionName).find(query).toArray()
+    const promise = this.connection.db(this._database).collection(collectionName).find(query).toArray()
+    if (typeof callback !== 'function') {
+      return promise
+    }
+
+    promise
       .then(result => callback(null, result))
       .catch(error => callback(error, null))
   },
@@ -244,8 +301,14 @@ const MongodbDriver = Base.extend({
    * @param callback  - The callback to call with the collection names
    */
   _getCollectionNames: function (callback) {
-    this.connection.db(this._database).collections({nameOnly: true})
-      .then(result => callback(null, result.map(c => c.collectionName)))
+    const promise = this.connection.db(this._database).collections({nameOnly: true})
+      .then(result => result.map(c => c.collectionName))
+    if (typeof callback !== 'function') {
+      return promise
+    }
+
+    promise
+      .then(result => callback(null, result))
       .catch(error => callback(error, null))
   },
 
@@ -256,7 +319,12 @@ const MongodbDriver = Base.extend({
    * @param callback        - The callback to call with the collection names
    */
   _getIndexes: function (collectionName, callback) {
-    this.connection.db(this._database).collection(collectionName).indexInformation()
+    const promise = this.connection.db(this._database).collection(collectionName).indexInformation()
+    if (typeof callback !== 'function') {
+      return promise
+    }
+    
+    promise
       .then(result => callback(null, result))
       .catch(error => callback(error, null))
   },
@@ -293,7 +361,12 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   deleteMigration: function (migrationName, callback) {
-    this.connection.db(this._database).collection(this.internals.migrationTable).deleteOne({name: migrationName})
+    const promise = this.connection.db(this._database).collection(this.internals.migrationTable).deleteOne({name: migrationName})
+    if (typeof callback !== 'function') {
+      return promise
+    }
+
+    promise
       .then(result => callback(null, result))
       .catch(error => callback(error, null))
   },
@@ -305,7 +378,12 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   deleteSeed: function (migrationName, callback) {
-    this.connection.db(this._database).collection(this.internals.seedTable).deleteOne({name: migrationName})
+    const promise = this.connection.db(this._database).collection(this.internals.seedTable).deleteOne({name: migrationName})
+    if (typeof callback !== 'function') {
+      return promise
+    }
+
+    promise
       .then(result => callback(null, result))
       .catch(error => callback(error, null))
   },
@@ -314,7 +392,12 @@ const MongodbDriver = Base.extend({
    * Closes the connection to mongodb
    */
   close: function (callback) {
-    this.connection.close()
+    const promise = this.connection.close()
+    if (typeof callback !== 'function') {
+      return promise
+    }
+
+    promise
       .then(_ => callback(null))
       .catch(error => callback(error, null))
   },
@@ -326,9 +409,7 @@ const MongodbDriver = Base.extend({
   update: function () {
     throw new Error('There is no NoSQL implementation yet!')
   }
-});
-
-Promise.promisifyAll(MongodbDriver);
+})
 
 function parseColonString(config, port, length) {
 

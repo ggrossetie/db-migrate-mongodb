@@ -26,11 +26,11 @@ describe('mongodb', function () {
     const connectionString = container.getConnectionString()
     const driver = getDriver(connectionString)
     try {
-      await driver.async.createCollection('event')
-      const collectionNames = await driver.async._getCollectionNames()
+      await driver.createCollection('event')
+      const collectionNames = await driver._getCollectionNames()
       assert.deepEqual(collectionNames, ["event"])
     } finally {
-      await driver.async.close()
+      await driver.close()
     }
   })
 
@@ -38,15 +38,15 @@ describe('mongodb', function () {
     const connectionString = container.getConnectionString()
     const driver = getDriver(connectionString)
     try {
-      await driver.async.createCollection('documents')
-      const emptyResult = await driver.async._find('documents', {name: 'foo'})
+      await driver.createCollection('documents')
+      const emptyResult = await driver._find('documents', {name: 'foo'})
       assert.deepEqual(emptyResult, [])
-      await driver.async.insert('documents', {name: 'foo'})
-      const docs = await driver.async._find('documents', {name: 'foo'})
+      await driver.insert('documents', {name: 'foo'})
+      const docs = await driver._find('documents', {name: 'foo'})
       assert.equal(docs.length, 1)
       assert.equal(docs[0].name, 'foo')
     } finally {
-      await driver.async.close()
+      await driver.close()
     }
   })
 
@@ -54,12 +54,12 @@ describe('mongodb', function () {
     const connectionString = container.getConnectionString()
     const driver = getDriver(connectionString)
     try {
-      await driver.async._createMigrationsCollection()
-      await driver.async._createMigrationsCollection()
+      await driver._createMigrationsCollection()
+      await driver._createMigrationsCollection()
     } catch (error) {
       assert.fail(`should not fail when calling _createMigrationsCollection multiple times but caught an error: ${error}`)
     } finally {
-      await driver.async.close()
+      await driver.close()
     }
   })
 })
