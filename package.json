@@ -9,12 +9,16 @@
   "exports": {
     ".": {
       "node": "./index.js",
+      "require": "./bundle.cjs",
+      "import": "./index.js",
       "default": "./index.js"
     }
   },
   "type": "module",
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "build": "rollup -c rollup.config.js",
+    "prepublish": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -49,7 +53,8 @@
     "@testcontainers/mongodb": "^11.8.1",
     "db-meta": "^0.4.1",
     "db-migrate-shared": "^1.1.2",
-    "mongodb": "6.21.0"
+    "mongodb": "6.21.0",
+    "rollup": "^4.53.2"
   },
   "overrides": {
     "graceful-fs": "^4.2.11"
