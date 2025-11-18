@@ -20,7 +20,15 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   _createMigrationsCollection: function (callback) {
-    this.createCollection(this.internals.migrationTable, callback)
+    this.createCollection(this.internals.migrationTable, (error, result) => {
+      // NamespaceExists
+      if (error && error.errorResponse && error.errorResponse.code === 48) {
+        // ignore
+        callback(null, result)
+        return
+      }
+      callback(error, result)
+    })
   },
 
   /**

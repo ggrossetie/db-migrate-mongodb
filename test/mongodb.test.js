@@ -49,4 +49,17 @@ describe('mongodb', function () {
       await driver.async.close()
     }
   })
+
+  it('should not fail when calling _createMigrationsCollection multiple times', async () => {
+    const connectionString = container.getConnectionString()
+    const driver = getDriver(connectionString)
+    try {
+      await driver.async._createMigrationsCollection()
+      await driver.async._createMigrationsCollection()
+    } catch (error) {
+      assert.fail(`should not fail when calling _createMigrationsCollection multiple times but caught an error: ${error}`)
+    } finally {
+      await driver.async.close()
+    }
+  })
 })
