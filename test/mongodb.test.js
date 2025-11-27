@@ -62,4 +62,18 @@ describe('mongodb', function () {
       await driver.close()
     }
   })
+
+  it('should list existing migrations', async () => {
+    const connectionString = container.getConnectionString()
+    const driver = getDriver(connectionString)
+    try {
+      await driver.addMigrationRecord('/foo')
+      const result = await driver.allLoadedMigrations()
+      assert.equal(result.length, 1)
+      assert.equal(result[0].name, '/foo')
+    } finally {
+      await driver._getDbInstance().dropCollection(driver.internals.migrationTable)
+      await driver.close()
+    }
+  })
 })

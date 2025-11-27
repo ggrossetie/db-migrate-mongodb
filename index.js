@@ -253,7 +253,7 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   addMigrationRecord: function (name, callback) {
-    this.insert(this.internals.migrationTable, {name: name, run_on: new Date()}, callback)
+    return this.insert(this.internals.migrationTable, { name: name, run_on: new Date() }, callback)
   },
 
   /**
@@ -263,7 +263,7 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   addSeedRecord: function (name, callback) {
-    this.insert(this.internals.seedTable, {name: name, run_on: new Date()}, callback)
+    return this.insert(this.internals.seedTable, { name: name, run_on: new Date() }, callback)
   },
 
   /**
@@ -282,17 +282,26 @@ const MongodbDriver = Base.extend({
    *
    * @param collectionName  - The collection to query on
    * @param query           - The query to run
+   * @param sort            - Optional sort
    * @param callback
    */
-  _find: function (collectionName, query, callback) {
-    const promise = this.connection.db(this._database).collection(collectionName).find(query).toArray()
-    if (typeof callback !== 'function') {
+  _find: function (collectionName, query, sort, callback) {
+    const findQuery = this.connection.db(this._database)
+      .collection(collectionName)
+      .find(query)
+    const promise = typeof sort === 'object'
+      ? findQuery.sort(sort).toArray()
+      : findQuery.toArray()
+    const cb = typeof callback === 'function'
+      ? callback
+      : callback === undefined && typeof sort === 'function' ? sort : undefined
+    if (cb === undefined) {
       return promise
     }
 
     promise
-      .then(result => callback(null, result))
-      .catch(error => callback(error, null))
+      .then(result => cb(null, result))
+      .catch(error => cb(error, null))
   },
 
   /**
@@ -301,7 +310,7 @@ const MongodbDriver = Base.extend({
    * @param callback  - The callback to call with the collection names
    */
   _getCollectionNames: function (callback) {
-    const promise = this.connection.db(this._database).collections({nameOnly: true})
+    const promise = this.connection.db(this._database).collections({ nameOnly: true })
       .then(result => result.map(c => c.collectionName))
     if (typeof callback !== 'function') {
       return promise
@@ -323,7 +332,7 @@ const MongodbDriver = Base.extend({
     if (typeof callback !== 'function') {
       return promise
     }
-    
+
     promise
       .then(result => callback(null, result))
       .catch(error => callback(error, null))
@@ -342,7 +351,7 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   allLoadedMigrations: function (callback) {
-    this._find(this.internals.migrationTable, {sort: {run_on: -1}}, callback)
+    return this._find(this.internals.migrationTable, {}, { run_on: -1 }, callback)
   },
 
   /**
@@ -351,7 +360,7 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   allLoadedSeeds: function (callback) {
-    this._find(this.internals.seedTable, {sort: {run_on: -1}}, callback)
+    return this._find(this.internals.seedTable, {}, { run_on: -1 }, callback)
   },
 
   /**
@@ -361,7 +370,7 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   deleteMigration: function (migrationName, callback) {
-    const promise = this.connection.db(this._database).collection(this.internals.migrationTable).deleteOne({name: migrationName})
+    const promise = this.connection.db(this._database).collection(this.internals.migrationTable).deleteOne({ name: migrationName })
     if (typeof callback !== 'function') {
       return promise
     }
@@ -378,7 +387,7 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   deleteSeed: function (migrationName, callback) {
-    const promise = this.connection.db(this._database).collection(this.internals.seedTable).deleteOne({name: migrationName})
+    const promise = this.connection.db(this._database).collection(this.internals.seedTable).deleteOne({ name: migrationName })
     if (typeof callback !== 'function') {
       return promise
     }
@@ -527,5 +536,5 @@ export function connect(config, intern, callback) {
   }
   callback(null, new MongodbDriver(db, intern, mongoString))
 }
-  
+
 
