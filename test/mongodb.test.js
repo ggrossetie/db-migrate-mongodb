@@ -102,4 +102,21 @@ describe('mongodb', function () {
       await driver.close()
     }
   })
+
+  it('should add an index', async () => {
+    const connectionString = container.getConnectionString()
+    const driver = getDriver(connectionString)
+    try {
+      await driver.createCollection('users')
+      const mongo = driver._getDbInstance()
+      const indexesBefore = await mongo .collection('users').listIndexes().toArray()
+      assert.deepEqual(indexesBefore.map(k => k.name), ['_id_'])
+      await driver.addIndex('users', 'email_1', ['email'], true)
+      const indexesAfterCreate = await mongo .collection('users').listIndexes().toArray()
+      assert.deepEqual(indexesAfterCreate.map(k => k.name), ['_id_', 'email_1'])
+    } finally {
+      await driver._getDbInstance().dropCollection('users')
+      await driver.close()
+    }
+  })
 })
