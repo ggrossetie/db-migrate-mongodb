@@ -194,17 +194,16 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   addIndex: function (collectionName, indexName, columns, unique, callback) {
-    const key = columns.reduce((result, column) => {
+    const keys = columns.reduce((result, column) => {
       result[column] = 1
       return result
     }, {})
     const options = {
       name: indexName,
-      key,
       unique: unique
     }
 
-    const promise = this.connection.db(this._database).collection(collectionName).createIndex(indexName, options)
+    const promise = this.connection.db(this._database).collection(collectionName).createIndex(keys, options)
     if (typeof callback !== 'function') {
       return promise
     }
