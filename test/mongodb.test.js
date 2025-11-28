@@ -30,6 +30,7 @@ describe('mongodb', function () {
       const collectionNames = await driver._getCollectionNames()
       assert.deepEqual(collectionNames, ["event"])
     } finally {
+      await driver._getDbInstance().dropCollection('event')
       await driver.close()
     }
   })
@@ -46,6 +47,7 @@ describe('mongodb', function () {
       assert.equal(docs.length, 1)
       assert.equal(docs[0].name, 'foo')
     } finally {
+      await driver._getDbInstance().dropCollection('documents')
       await driver.close()
     }
   })
@@ -73,6 +75,30 @@ describe('mongodb', function () {
       assert.equal(result[0].name, '/foo')
     } finally {
       await driver._getDbInstance().dropCollection(driver.internals.migrationTable)
+      await driver.close()
+    }
+  })
+
+  it('should drop an existing index', async () => {
+    const connectionString = container.getConnectionString()
+    const driver = getDriver(connectionString)
+    try {
+      await driver.createCollection('products')
+      const collectionNames = await driver._getCollectionNames()
+      assert.deepEqual(collectionNames, ["products"])
+      const mongo = driver._getDbInstance()
+      const indexesBefore = await mongo .collection('products').listIndexes().toArray()
+      assert.deepEqual(indexesBefore.map(k => k.name), ['_id_'])
+      await mongo
+        .collection('products')
+        .createIndex({ updatedAt: -1 }, { unique: false })
+      const indexesAfterCreate = await mongo .collection('products').listIndexes().toArray()
+      assert.deepEqual(indexesAfterCreate.map(k => k.name), ['_id_', 'updatedAt_-1'])
+      await driver.removeIndex('products', 'updatedAt_-1')
+      const indexesAfterRemove = await mongo .collection('products').listIndexes().toArray()
+      assert.deepEqual(indexesAfterRemove.map(k => k.name), ['_id_'])
+      } finally {
+      await driver._getDbInstance().dropCollection('products')
       await driver.close()
     }
   })

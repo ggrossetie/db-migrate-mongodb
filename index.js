@@ -191,7 +191,7 @@ const MongodbDriver = Base.extend({
    * @param indexName       - The name of the index to add
    * @param columns         - The columns to add an index on
    * @param unique          - A boolean whether this creates a unique index
-   * @parma callback
+   * @param callback
    */
   addIndex: function (collectionName, indexName, columns, unique, callback) {
     const options = {
@@ -200,7 +200,7 @@ const MongodbDriver = Base.extend({
       unique: unique
     }
 
-    const promise = this.connection.db(this._database).createIndex(collectionName, options)
+    const promise = this.connection.db(this._database).collection(collectionName).createIndex(options)
     if (typeof callback !== 'function') {
       return promise
     }
@@ -218,7 +218,7 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   removeIndex: function (collectionName, indexName, callback) {
-    const promise = this.connection.db(this._database).dropIndex(collectionName, indexName)
+    const promise = this.connection.db(this._database).collection(collectionName).dropIndex(indexName)
     if (typeof callback !== 'function') {
       return promise
     }
