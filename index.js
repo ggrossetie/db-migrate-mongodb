@@ -390,6 +390,7 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   deleteSeed: function (migrationName, callback) {
+    this.connection.connect()
     const promise = this.connection.db(this._database).collection(this.internals.seedTable).deleteOne({ name: migrationName })
     if (typeof callback !== 'function') {
       return promise
