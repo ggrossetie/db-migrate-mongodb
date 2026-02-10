@@ -30,3 +30,5 @@ node_modules
 test/db.config.json
 
 bundle.cjs
+
+.claude/
