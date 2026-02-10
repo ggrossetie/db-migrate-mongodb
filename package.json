@@ -35,6 +35,9 @@
     "Tobias Gurtzick <magic@wizardtales.com>",
     "Guillaume Grossetie <ggrossetie@yuzutech.fr>"
   ],
+  "engines": {
+    "node": ">=22"
+  },
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/ggrossetie/db-migrate-mongodb/issues"
@@ -45,13 +48,13 @@
   },
   "peerDependencies": {
     "express-session": "^1.17.1",
-    "mongodb": ">= 5.1.0 < 7"
+    "mongodb": ">= 5.1.0 < 8"
   },
   "devDependencies": {
     "@testcontainers/mongodb": "^11.8.1",
     "db-meta": "^0.4.1",
     "db-migrate-shared": "^1.1.2",
-    "mongodb": "6.21.0",
+    "mongodb": "^7.1.0",
     "rollup": "^4.53.2"
   },
   "overrides": {
