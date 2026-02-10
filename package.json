@@ -6,6 +6,14 @@
   "publishConfig": {
     "access": "public"
   },
+  "files": [
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md",
+    "bundle.cjs",
+    "index.js",
+    "package.json"
+  ],
   "exports": {
     ".": {
       "require": "./bundle.cjs",
