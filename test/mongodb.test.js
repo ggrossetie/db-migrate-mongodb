@@ -5,52 +5,55 @@ import { MongoDBContainer } from '@testcontainers/mongodb'
 
 import { getDriver } from './harness.js'
 
-describe('mongodb', function () {
+const mongoVersions = ['6.0', '7.0', '8.0']
 
-  let container
-  before(async () => {
-    container = await new MongoDBContainer('mongo:5.0.31').start()
-  })
+for (const version of mongoVersions) {
+  describe(`mongodb ${version}`, function () {
 
-  after(async () => {
-    container.stop()
-  })
+    let container
+    before(async () => {
+      container = await new MongoDBContainer(`mongo:${version}`).start()
+    })
 
-  it('should get a driver', () => {
-    const connectionString = container.getConnectionString()
-    const driver = getDriver(connectionString)
-    assert.notEqual(driver, null)
-  })
+    after(async () => {
+      container.stop()
+    })
 
-  it('should create collection', async () => {
-    const connectionString = container.getConnectionString()
-    const driver = getDriver(connectionString)
-    try {
-      await driver.createCollection('event')
-      const collectionNames = await driver._getCollectionNames()
-      assert.deepEqual(collectionNames, ["event"])
-    } finally {
-      await driver._getDbInstance().dropCollection('event')
+    it('should get a driver', () => {
+      const connectionString = container.getConnectionString()
+      const driver = getDriver(connectionString)
+      assert.notEqual(driver, null)
+    })
+
+    it('should create collection', async () => {
+      const connectionString = container.getConnectionString()
+      const driver = getDriver(connectionString)
+      try {
+        await driver.createCollection('event')
+        const collectionNames = await driver._getCollectionNames()
+        assert.deepEqual(collectionNames, ["event"])
+      } finally {
+        await driver._getDbInstance().dropCollection('event')
       await driver.close()
-    }
-  })
+      }
+    })
 
-  it('should find a document', async () => {
-    const connectionString = container.getConnectionString()
-    const driver = getDriver(connectionString)
-    try {
-      await driver.createCollection('documents')
-      const emptyResult = await driver._find('documents', {name: 'foo'})
-      assert.deepEqual(emptyResult, [])
-      await driver.insert('documents', {name: 'foo'})
-      const docs = await driver._find('documents', {name: 'foo'})
-      assert.equal(docs.length, 1)
-      assert.equal(docs[0].name, 'foo')
-    } finally {
-      await driver._getDbInstance().dropCollection('documents')
+    it('should find a document', async () => {
+      const connectionString = container.getConnectionString()
+      const driver = getDriver(connectionString)
+      try {
+        await driver.createCollection('documents')
+        const emptyResult = await driver._find('documents', {name: 'foo'})
+        assert.deepEqual(emptyResult, [])
+        await driver.insert('documents', {name: 'foo'})
+        const docs = await driver._find('documents', {name: 'foo'})
+        assert.equal(docs.length, 1)
+        assert.equal(docs[0].name, 'foo')
+      } finally {
+        await driver._getDbInstance().dropCollection('documents')
       await driver.close()
-    }
-  })
+      }
+    })
 
   it('should not fail when calling _createMigrationsCollection multiple times', async () => {
     const connectionString = container.getConnectionString()
@@ -119,4 +122,5 @@ describe('mongodb', function () {
       await driver.close()
     }
   })
-})
+  })
+}
