@@ -1,0 +1,87 @@
+name: Release
+run-name: Release v${{ inputs.version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 2.0.1 or 2.1.0-beta.1)'
+        required: true
+        type: string
+
+permissions:
+  contents: write  # push the release commit and tag, create the release
+  id-token: write  # npm Trusted Publisher and provenance (OIDC)
+
+env:
+  VERSION: ${{ inputs.version }}
+  # heading style of CHANGELOG.md, e.g. "## 2.0.1 (2026-11-25)"
+  RELEASE_HEADING: '{version} ({date})'
+
+jobs:
+  release:
+    name: Release
+    if: github.ref_name == 'master' && github.repository_owner == 'ggrossetie'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate version
+        run: |
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Invalid version '$VERSION' (expected e.g. 2.0.1 or 2.1.0-beta.1, without the v prefix)"
+            exit 1
+          fi
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      # Trusted Publisher requires npm >= 11.5.1, which ships with Node.js 24
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Test
+        run: npm t
+      - name: Bump version and roll changelog
+        run: |
+          npm version "$VERSION" --no-git-tag-version
+          npx bestikk-changelog release "$VERSION" --file CHANGELOG.md \
+            --unreleased-heading Unreleased --release-heading "$RELEASE_HEADING"
+      - name: Commit, tag and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json CHANGELOG.md
+          git commit -m "$VERSION"
+          git tag "v$VERSION" -m "$VERSION"
+          git push origin "$GITHUB_REF_NAME" "v$VERSION"
+      # a prerelease must not steal the "latest" tag
+      - name: Determine npm dist-tag
+        id: npm_tag
+        run: |
+          if [[ "$VERSION" == *-* ]]; then
+            echo "tag=testing" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
+          fi
+      # no token needed, npm authenticates through OIDC (Trusted Publisher)
+      - name: Publish to npm
+        run: npm publish --provenance --access public --tag "${{ steps.npm_tag.outputs.tag }}"
+      - name: Generate release notes
+        run: |
+          npx bestikk-changelog notes "$VERSION" --file CHANGELOG.md \
+            --unreleased-heading Unreleased --release-heading "$RELEASE_HEADING" \
+            --repo-url "https://github.com/$GITHUB_REPOSITORY" > "$RUNNER_TEMP/release-notes.md"
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PRERELEASE_FLAG=""
+          if [[ "$VERSION" == *-* ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --notes-file "$RUNNER_TEMP/release-notes.md" \
+            $PRERELEASE_FLAG
