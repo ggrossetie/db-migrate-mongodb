@@ -96,7 +96,7 @@ Since version 1.0, db-migrate keeps a state next to the migrations and locks the
 The driver supports both. The state is stored in the `migrations_state` collection (see the `--state-table` option of db-migrate), which is created on the first run.
 Upgrading db-migrate from 0.11 does not require any change, the migrations already recorded in the `migrations` collection are kept.
 
-The migrations of db-migrate using `_meta.version: 2` rely on a relational schema and are not supported.
+Migrations must use `_meta.version: 1` (the default). The version 2 format lets db-migrate learn a relational schema (tables, columns, foreign keys), which does not apply to MongoDB.
 
 ## License
 

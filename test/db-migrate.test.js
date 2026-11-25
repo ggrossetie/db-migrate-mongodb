@@ -233,6 +233,18 @@ for (const packageName of packages) {
         assert.equal(pets.length, 1)
       })
 
+      it('should create and drop a database', async () => {
+        await client.db(database).collection('untouched').insertOne({ name: 'kept' })
+        // a noop, MongoDB creates the databases on the fly
+        await run('db:create', 'db_migrate_other')
+        await client.db('db_migrate_other').createCollection('things')
+        await run('db:drop', 'db_migrate_other')
+        const { databases } = await client.db().admin().listDatabases({ nameOnly: true })
+        assert.ok(!databases.map(d => d.name).includes('db_migrate_other'))
+        // the database of the migrations is left untouched
+        assert.equal(await client.db(database).collection('untouched').countDocuments(), 1)
+      })
+
       it('should run the migrations down again', async () => {
         await run('down', '--count', '2')
         assert.deepEqual(await migrationNames(database), [])
