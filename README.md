@@ -22,7 +22,7 @@ This is a fork of [db-migrate/mongodb](https://github.com/db-migrate/mongodb), r
 - **ESM first** — the source is an ES module. A CJS bundle (`bundle.cjs`) is also shipped for compatibility via the `exports` field in `package.json`.
 - **`mongodb` is a peer dependency** — you install the MongoDB driver version you need, instead of being locked to a specific major version.
 - **No bluebird** — all methods return native promises (and still accept an optional callback for backward compatibility with db-migrate).
-- **Removed the internal `_run()` abstraction** — methods call the MongoDB driver API directly.
+- **Replaced the internal `_run()` dispatcher** — methods call the MongoDB driver API directly. Write operations only go through a thin `_write()` helper, which logs and skips them in [dry-run mode](#dry-run).
 
 ## Installation
 
