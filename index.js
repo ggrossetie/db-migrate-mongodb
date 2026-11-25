@@ -574,10 +574,8 @@ export function connect(config, intern, callback) {
   log = internals.mod.log;
   type = internals.mod.type;
 
-  // Make sure the database is defined
-  if (config.database === undefined) {
-    throw new Error('database must be defined in database.json');
-  }
+  // The database is optional, db-migrate removes it from the config to create or drop a database (db:create, db:drop).
+  // Without a database, the MongoDB driver uses the one of the connection string or "test".
 
   if (config.url !== undefined) {
     const db = config.db || new MongoClient(config.url, config.options ?? {})
@@ -623,7 +621,7 @@ export function connect(config, intern, callback) {
     mongoString += config.user + ':' + config.password + '@';
   }
 
-  mongoString += host + '/' + config.database;
+  mongoString += host + '/' + (config.database ?? '');
 
   const extraParams = [];
   if (config.ssl) {
