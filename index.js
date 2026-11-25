@@ -142,7 +142,7 @@ const MongodbDriver = Base.extend({
       callback = options
     }
 
-    return this._write(`dropDatabase("${dbName}")`, () => this.connection.dropDatabase(dbName, typeof options === 'object' ? options : {}), callback)
+    return this._write(`dropDatabase("${dbName}")`, () => this.connection.db(dbName).dropDatabase(typeof options === 'object' && options !== null ? options : {}), callback)
   },
 
   /**
