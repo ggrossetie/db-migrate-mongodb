@@ -41,6 +41,8 @@ The driver is tested against every supported environment, so a change must pass 
 
 Every public method supports both a callback and a promise (it returns a promise when no callback is provided). Keep both when you add or change a method.
 
+A method that writes to the database must go through the `_write()` helper, so the operation is logged and skipped with `--dry-run`.
+
 ### Commit messages
 
 Commit messages follow the [Conventional Commits](https://www.conventionalcommits.org/) format.
