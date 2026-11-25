@@ -14,6 +14,31 @@ const MongodbDriver = Base.extend({
   },
 
   /**
+   * Runs a write operation, unless db-migrate was started with --dry-run.
+   * In dry-run mode the operation is logged and skipped, and the result is undefined.
+   *
+   * @param description - A short description of the operation (logged in dry-run mode)
+   * @param operation   - A function that performs the write and returns a promise
+   * @param callback
+   */
+  _write: function (description, operation, callback) {
+    let promise
+    if (this.internals.dryRun) {
+      log.info(`dry run, skipping ${description}`)
+      promise = Promise.resolve()
+    } else {
+      promise = new Promise(resolve => resolve(operation()))
+    }
+    if (typeof callback !== 'function') {
+      return promise
+    }
+
+    promise
+      .then(result => callback(null, result))
+      .catch(error => callback(error, null))
+  },
+
+  /**
    * Creates the migrations collection
    *
    * @param callback
@@ -76,13 +101,7 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   createCollection: function (collectionName, callback) {
-    const promise = this.connection.db(this._database).createCollection(collectionName)
-    if (typeof callback !== 'function') {
-      return promise
-    }
-    promise
-      .then(result => callback(null, result))
-      .catch(error => callback(error, null))
+    return this._write(`createCollection("${collectionName}")`, () => this.connection.db(this._database).createCollection(collectionName), callback)
   },
 
   /**
@@ -123,14 +142,7 @@ const MongodbDriver = Base.extend({
       callback = options
     }
 
-    const promise = this.connection.dropDatabase(dbName, typeof options === 'object' ? options : {})
-    if (typeof callback !== 'function') {
-      return promise
-    }
-
-    promise
-      .then(result => callback(null, result))
-      .catch(error => callback(error, null))
+    return this._write(`dropDatabase("${dbName}")`, () => this.connection.dropDatabase(dbName, typeof options === 'object' ? options : {}), callback)
   },
 
   /**
@@ -140,14 +152,7 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   dropCollection: function (collectionName, callback) {
-    const promise = this.connection.db(this._database).dropCollection(collectionName)
-    if (typeof callback !== 'function') {
-      return promise
-    }
-
-    promise
-      .then(result => callback(null, result))
-      .catch(error => callback(error, null))
+    return this._write(`dropCollection("${collectionName}")`, () => this.connection.db(this._database).dropCollection(collectionName), callback)
   },
 
   /**
@@ -166,14 +171,7 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   renameCollection: function (collectionName, newCollectionName, callback) {
-    const promise = this.connection.db(this._database).renameCollection(collectionName, newCollectionName)
-    if (typeof callback !== 'function') {
-      return promise
-    }
-
-    promise
-      .then(result => callback(null, result))
-      .catch(error => callback(error, null))
+    return this._write(`renameCollection("${collectionName}", "${newCollectionName}")`, () => this.connection.db(this._database).renameCollection(collectionName, newCollectionName), callback)
   },
 
   /**
@@ -203,14 +201,7 @@ const MongodbDriver = Base.extend({
       unique: unique
     }
 
-    const promise = this.connection.db(this._database).collection(collectionName).createIndex(keys, options)
-    if (typeof callback !== 'function') {
-      return promise
-    }
-
-    promise
-      .then(result => callback(null, result))
-      .catch(error => callback(error, null))
+    return this._write(`addIndex("${collectionName}", "${indexName}")`, () => this.connection.db(this._database).collection(collectionName).createIndex(keys, options), callback)
   },
 
   /**
@@ -221,14 +212,7 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   removeIndex: function (collectionName, indexName, callback) {
-    const promise = this.connection.db(this._database).collection(collectionName).dropIndex(indexName)
-    if (typeof callback !== 'function') {
-      return promise
-    }
-
-    promise
-      .then(result => callback(null, result))
-      .catch(error => callback(error, null))
+    return this._write(`removeIndex("${collectionName}", "${indexName}")`, () => this.connection.db(this._database).collection(collectionName).dropIndex(indexName), callback)
   },
 
   /**
@@ -239,14 +223,7 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   insert: function (collectionName, toInsert, callback) {
-    const promise = this.connection.db(this._database).collection(collectionName).insertOne(toInsert)
-    if (typeof callback !== 'function') {
-      return promise
-    }
-
-    promise
-      .then(result => callback(null, result))
-      .catch(error => callback(error, null))
+    return this._write(`insert("${collectionName}")`, () => this.connection.db(this._database).collection(collectionName).insertOne(toInsert), callback)
   },
 
   /**
@@ -274,9 +251,14 @@ const MongodbDriver = Base.extend({
    * NOTE: This method exceptionally does not call close() on the database driver when the promise resolves.
    * So the getDbInstance method caller needs to call .close() on its own after finish working with the database driver.
    *
+   * In dry-run mode this method throws, because writes made on the raw database instance cannot be intercepted.
+   *
    * @returns {Db} a database instance
    */
   _getDbInstance: function () {
+    if (this.internals.dryRun) {
+      throw new Error('_getDbInstance() is not available in dry-run mode because the driver cannot intercept operations made on the raw database instance. Check `db.internals.dryRun` in your migration to skip them.')
+    }
     return this.connection.db(this._database)
   },
 
@@ -342,7 +324,7 @@ const MongodbDriver = Base.extend({
   },
 
   /**
-   * Runs a NoSQL command regardless of the dry-run param
+   * Not implemented
    */
   _all: function () {
     throw new Error('Method not implemented.')
@@ -373,14 +355,7 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   deleteMigration: function (migrationName, callback) {
-    const promise = this.connection.db(this._database).collection(this.internals.migrationTable).deleteOne({ name: migrationName })
-    if (typeof callback !== 'function') {
-      return promise
-    }
-
-    promise
-      .then(result => callback(null, result))
-      .catch(error => callback(error, null))
+    return this._write(`deleteMigration("${migrationName}")`, () => this.connection.db(this._database).collection(this.internals.migrationTable).deleteOne({ name: migrationName }), callback)
   },
 
   /**
@@ -390,15 +365,10 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   deleteSeed: function (migrationName, callback) {
-    this.connection.connect()
-    const promise = this.connection.db(this._database).collection(this.internals.seedTable).deleteOne({ name: migrationName })
-    if (typeof callback !== 'function') {
-      return promise
-    }
-
-    promise
-      .then(result => callback(null, result))
-      .catch(error => callback(error, null))
+    return this._write(`deleteSeed("${migrationName}")`, () => {
+      this.connection.connect()
+      return this.connection.db(this._database).collection(this.internals.seedTable).deleteOne({ name: migrationName })
+    }, callback)
   },
 
   /**
