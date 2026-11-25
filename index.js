@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb'
+import { MongoClient, ObjectId } from 'mongodb'
 import Base from 'db-migrate-base'
 
 let log;
@@ -44,29 +44,167 @@ const MongodbDriver = Base.extend({
    * @param callback
    */
   _createMigrationsCollection: function (callback) {
+    const promise = this._createList(this.internals.migrationTable)
     if (typeof callback !== 'function') {
-      return this.createCollection(this.internals.migrationTable)
-        .catch(error => {
-          // NamespaceExists
-          if (error && error.errorResponse && error.errorResponse.code === 48) {
-            // ignore
-          } else {
-            throw error
-          }
-        })
+      return promise
     }
 
-    if (typeof callback === 'function') {
-      this.createCollection(this.internals.migrationTable, (error, result) => {
+    promise
+      .then(result => callback(null, result))
+      .catch(error => callback(error, null))
+  },
+
+  /**
+   * Capabilities read by db-migrate (>= 1.0).
+   * The key/value state below is safe to use for the migration lock, _updateKVC is an atomic compare and swap
+   * and run_on is set by the clock of the database.
+   */
+  _meta: {
+    supports: {
+      locking: true
+    }
+  },
+
+  /**
+   * Creates a collection holding a list of entries ({ name, run_on }), does nothing when it already exists.
+   * Part of the state management of db-migrate (>= 1.0).
+   *
+   * @param collectionName  - The name of the collection to be created
+   */
+  _createList: function (collectionName) {
+    return this._write(`createCollection("${collectionName}")`, () => this.connection.db(this._database).createCollection(collectionName)
+      .then(() => undefined)
+      .catch(error => {
         // NamespaceExists
         if (error && error.errorResponse && error.errorResponse.code === 48) {
-          // ignore
-          callback(null, result)
           return
         }
-        callback(error, result)
-      })
-    }
+        throw error
+      }))
+  },
+
+  /**
+   * Returns the entries of a list, most recent first.
+   *
+   * @param collectionName  - The name of the collection
+   */
+  _getList: function (collectionName) {
+    return this._find(collectionName, {}, { run_on: -1, name: -1 })
+  },
+
+  /**
+   * Adds an entry to a list.
+   *
+   * @param collectionName  - The name of the collection
+   * @param name            - The name of the entry
+   */
+  _insertEntry: function (collectionName, name) {
+    return this._write(`insert("${collectionName}", "${name}")`, () => this.connection.db(this._database).collection(collectionName)
+      .updateOne({ _id: new ObjectId() }, [{ $set: { name: { $literal: name }, run_on: '$$NOW' } }], { upsert: true }))
+  },
+
+  /**
+   * Removes an entry from a list.
+   *
+   * @param collectionName  - The name of the collection
+   * @param name            - The name of the entry
+   */
+  _deleteEntry: function (collectionName, name) {
+    return this._write(`delete("${collectionName}", "${name}")`, () => this.connection.db(this._database).collection(collectionName).deleteOne({ name }))
+  },
+
+  /**
+   * Removes the entries (or keys) written before the given date.
+   *
+   * @param collectionName  - The name of the collection
+   * @param expiry          - The date
+   */
+  _deleteExpired: function (collectionName, expiry) {
+    return this._write(`deleteExpired("${collectionName}")`, () => this.connection.db(this._database).collection(collectionName).deleteMany({ run_on: { $lte: new Date(expiry) } }))
+  },
+
+  /**
+   * Creates a collection holding key/value pairs ({ key, value, run_on }), does nothing when it already exists.
+   * Part of the state management of db-migrate (>= 1.0).
+   *
+   * @param collectionName  - The name of the collection to be created
+   */
+  _createKV: function (collectionName) {
+    // creates the collection implicitly, and does nothing when the index already exists
+    return this._write(`createCollection("${collectionName}")`, () => this.connection.db(this._database).collection(collectionName)
+      .createIndex({ key: 1 }, { unique: true })
+      .then(() => undefined))
+  },
+
+  /**
+   * Returns a key/value pair, or undefined when the key does not exist.
+   *
+   * @param collectionName  - The name of the collection
+   * @param key             - The key
+   */
+  _getKV: function (collectionName, key) {
+    return this.connection.db(this._database).collection(collectionName)
+      .findOne({ key }, { projection: { _id: 0 } })
+      .then(result => result ?? undefined)
+  },
+
+  /**
+   * Inserts a key/value pair, fails when the key already exists.
+   *
+   * @param collectionName  - The name of the collection
+   * @param key             - The key
+   * @param value           - The value
+   */
+  _insertKV: function (collectionName, key, value) {
+    // an upsert leaving an existing document untouched, as $$NOW (the clock of the database) is not available on insert
+    return this._write(`insert("${collectionName}", "${key}")`, () => this.connection.db(this._database).collection(collectionName)
+      .updateOne(
+        { key },
+        [{ $set: { value: { $ifNull: ['$value', { $literal: value }] }, run_on: { $ifNull: ['$run_on', '$$NOW'] } } }],
+        { upsert: true }
+      )
+      .then(result => {
+        if (result.upsertedCount !== 1) {
+          throw new Error(`Duplicate key "${key}" in collection "${collectionName}"`)
+        }
+        return result
+      }))
+  },
+
+  /**
+   * Updates the value of a key.
+   *
+   * @param collectionName  - The name of the collection
+   * @param key             - The key
+   * @param value           - The new value
+   */
+  _updateKV: function (collectionName, key, value) {
+    return this._write(`update("${collectionName}", "${key}")`, () => this.connection.db(this._database).collection(collectionName)
+      .updateOne({ key }, { $set: { value }, $currentDate: { run_on: true } }))
+  },
+
+  /**
+   * Updates the value of a key, only if the given field still has the expected value (compare and swap).
+   *
+   * @param collectionName  - The name of the collection
+   * @param key             - The key
+   * @param value           - The new value
+   * @param field           - The name of the field to compare
+   * @param expected        - The expected value of the field
+   */
+  _updateKVC: function (collectionName, key, value, field, expected) {
+    return this._write(`update("${collectionName}", "${key}")`, () => this.connection.db(this._database).collection(collectionName)
+      .updateOne({ key, [field]: expected }, { $set: { value }, $currentDate: { run_on: true } }))
+  },
+
+  /**
+   * Removes a key.
+   *
+   * @param collectionName  - The name of the collection
+   * @param key             - The key
+   */
+  _deleteKV: function (collectionName, key) {
+    return this._write(`delete("${collectionName}", "${key}")`, () => this.connection.db(this._database).collection(collectionName).deleteOne({ key }))
   },
 
   /**

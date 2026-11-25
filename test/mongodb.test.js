@@ -206,9 +206,99 @@ for (const version of mongoVersions) {
       assert.deepEqual(await driver._find('dry_run', {}), [])
     })
 
+    it('should not write the state of db-migrate', async () => {
+      await dryRunDriver._createList('dry_run_list')
+      await dryRunDriver._createKV('dry_run_state')
+      await dryRunDriver._insertEntry('dry_run_list', 'a')
+      await dryRunDriver._insertKV('dry_run_state', 'lock', 'one')
+      const names = await driver._getCollectionNames()
+      assert.ok(!names.includes('dry_run_list'))
+      assert.ok(!names.includes('dry_run_state'))
+      await driver._createKV('dry_run_state')
+      await driver._insertKV('dry_run_state', 'lock', 'one')
+      await dryRunDriver._updateKV('dry_run_state', 'lock', 'two')
+      await dryRunDriver._updateKVC('dry_run_state', 'lock', 'two', 'value', 'one')
+      await dryRunDriver._deleteKV('dry_run_state', 'lock')
+      assert.equal((await dryRunDriver._getKV('dry_run_state', 'lock')).value, 'one')
+    })
+
     it('should throw when getting the raw database instance', () => {
       assert.throws(() => dryRunDriver._getDbInstance(), /not available in dry-run mode/)
     })
+  })
+
+  it('should manage a list of entries', async () => {
+    const connectionString = container.getConnectionString()
+    const driver = getDriver(connectionString)
+    try {
+      await driver._createList('entries')
+      await driver._createList('entries')
+      assert.deepEqual(await driver._getList('entries'), [])
+      await driver._insertEntry('entries', 'a')
+      await driver._insertEntry('entries', '$b')
+      const entries = await driver._getList('entries')
+      assert.deepEqual(entries.map(e => e.name).sort(), ['$b', 'a'])
+      assert.ok(entries.every(e => e.run_on instanceof Date))
+      await driver._deleteEntry('entries', 'a')
+      assert.deepEqual((await driver._getList('entries')).map(e => e.name), ['$b'])
+      await driver._deleteExpired('entries', new Date(Date.now() + 60_000))
+      assert.deepEqual(await driver._getList('entries'), [])
+    } finally {
+      await driver._getDbInstance().dropCollection('entries')
+      await driver.close()
+    }
+  })
+
+  it('should manage key/value pairs', async () => {
+    const connectionString = container.getConnectionString()
+    const driver = getDriver(connectionString)
+    try {
+      await driver._createKV('state')
+      await driver._createKV('state')
+      assert.equal(await driver._getKV('state', 'lock'), undefined)
+
+      await driver._insertKV('state', 'lock', '$one')
+      const inserted = await driver._getKV('state', 'lock')
+      assert.deepEqual(Object.keys(inserted).sort(), ['key', 'run_on', 'value'])
+      assert.equal(inserted.key, 'lock')
+      assert.equal(inserted.value, '$one')
+      assert.ok(inserted.run_on instanceof Date)
+
+      // a key can only be inserted once
+      await assert.rejects(driver._insertKV('state', 'lock', 'other'), /Duplicate key "lock"/)
+      assert.equal((await driver._getKV('state', 'lock')).value, '$one')
+
+      await driver._updateKV('state', 'lock', 'two')
+      assert.equal((await driver._getKV('state', 'lock')).value, 'two')
+
+      // compare and swap, the update only applies when the expected value matches
+      await driver._updateKVC('state', 'lock', 'three', 'value', '$one')
+      assert.equal((await driver._getKV('state', 'lock')).value, 'two')
+      await driver._updateKVC('state', 'lock', 'three', 'value', 'two')
+      assert.equal((await driver._getKV('state', 'lock')).value, 'three')
+
+      await driver._deleteKV('state', 'lock')
+      assert.equal(await driver._getKV('state', 'lock'), undefined)
+    } finally {
+      await driver._getDbInstance().dropCollection('state')
+      await driver.close()
+    }
+  })
+
+  it('should let a single concurrent compare and swap win', async () => {
+    const connectionString = container.getConnectionString()
+    const driver = getDriver(connectionString)
+    try {
+      await driver._createKV('state')
+      await driver._insertKV('state', 'lock', 'free')
+      const candidates = Array.from({ length: 10 }, (_, i) => `owner-${i}`)
+      const results = await Promise.all(candidates.map(c => driver._updateKVC('state', 'lock', c, 'value', 'free')))
+      assert.equal(results.filter(r => r.modifiedCount === 1).length, 1)
+      assert.match((await driver._getKV('state', 'lock')).value, /^owner-\d$/)
+    } finally {
+      await driver._getDbInstance().dropCollection('state')
+      await driver.close()
+    }
   })
   })
 }

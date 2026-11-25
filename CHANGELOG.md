@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Features
+
+* Support the state management and the migration lock of db-migrate >= 1.0 (tested against db-migrate 0.11 and 1.9)
+
 ### Bug Fixes
 
 * Honor `--dry-run` again ([#2](https://github.com/ggrossetie/db-migrate-mongodb/issues/2)). Write operations are logged and skipped, and `_getDbInstance()` throws because operations on the raw database instance cannot be intercepted
