@@ -127,3 +127,9 @@ The workflow then
 6. creates the GitHub release, using the changelog section as release notes
 
 A version with a suffix is published as a prerelease, on npm (`testing` dist-tag) and on GitHub.
+
+### Resuming a failed release
+
+When the workflow fails after the tag was pushed (for instance because npm rejected the publication), fix the cause and run the workflow again with the same version.
+The workflow detects the existing tag and resumes from it. It skips the version bump and the tag, then only performs the missing steps (publication to npm, GitHub release).
+Do not delete the tag and do not revert the release commit.
