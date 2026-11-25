@@ -46,6 +46,23 @@ Configure your `database.json`:
 }
 ```
 
+### Dry run
+
+With `db-migrate up --dry-run`, the driver logs and skips every write operation (`createCollection`, `insert`, `addIndex`...), and these methods resolve to `undefined`.
+Read operations still run against the database.
+
+The driver cannot intercept operations made on the raw `Db` instance, so `_getDbInstance()` throws in dry-run mode.
+A migration that needs the raw instance can check the flag itself.
+
+```js
+exports.up = async function (db) {
+  if (db.internals.dryRun) {
+    return
+  }
+  await db._getDbInstance().collection('users').updateMany({}, { $set: { active: true } })
+}
+```
+
 ## License
 
 MIT

@@ -122,5 +122,74 @@ for (const version of mongoVersions) {
       await driver.close()
     }
   })
+
+  describe('dry run', () => {
+    let driver
+    let dryRunDriver
+    before(() => {
+      const connectionString = container.getConnectionString()
+      driver = getDriver(connectionString)
+      dryRunDriver = getDriver(connectionString, { dryRun: true })
+    })
+
+    after(async () => {
+      await driver._getDbInstance().dropDatabase()
+      await driver.close()
+      await dryRunDriver.close()
+    })
+
+    it('should not create, rename or drop a collection', async () => {
+      assert.equal(await dryRunDriver.createCollection('dry_run'), undefined)
+      assert.deepEqual(await driver._getCollectionNames(), [])
+      await driver.createCollection('dry_run')
+      await dryRunDriver.renameCollection('dry_run', 'renamed')
+      await dryRunDriver.dropCollection('dry_run')
+      assert.deepEqual(await driver._getCollectionNames(), ['dry_run'])
+    })
+
+    it('should not insert a document', async () => {
+      await dryRunDriver.insert('dry_run', { name: 'foo' })
+      assert.deepEqual(await dryRunDriver._find('dry_run', {}), [])
+    })
+
+    it('should not add or remove an index', async () => {
+      await dryRunDriver.addIndex('dry_run', 'name_1', ['name'], true)
+      assert.deepEqual(Object.keys(await driver._getIndexes('dry_run')), ['_id_'])
+      await driver.addIndex('dry_run', 'name_1', ['name'], true)
+      await dryRunDriver.removeIndex('dry_run', 'name_1')
+      assert.deepEqual(Object.keys(await driver._getIndexes('dry_run')), ['_id_', 'name_1'])
+    })
+
+    it('should not add or delete a migration or seed record', async () => {
+      await dryRunDriver._createMigrationsCollection()
+      await dryRunDriver.addMigrationRecord('/dry-run')
+      await dryRunDriver.addSeedRecord('/dry-run')
+      assert.deepEqual(await dryRunDriver.allLoadedMigrations(), [])
+      assert.deepEqual(await dryRunDriver.allLoadedSeeds(), [])
+      await driver.addMigrationRecord('/applied')
+      await driver.addSeedRecord('/applied')
+      await dryRunDriver.deleteMigration('/applied')
+      await dryRunDriver.deleteSeed('/applied')
+      assert.deepEqual((await driver.allLoadedMigrations()).map(m => m.name), ['/applied'])
+      assert.deepEqual((await driver.allLoadedSeeds()).map(m => m.name), ['/applied'])
+    })
+
+    it('should not drop a database', async () => {
+      await dryRunDriver.dropDatabase('db_migrate_test')
+      assert.notDeepEqual(await driver._getCollectionNames(), [])
+    })
+
+    it('should support callbacks', async () => {
+      const result = await new Promise((resolve, reject) => {
+        dryRunDriver.insert('dry_run', { name: 'foo' }, (error, result) => error ? reject(error) : resolve(result))
+      })
+      assert.equal(result, undefined)
+      assert.deepEqual(await driver._find('dry_run', {}), [])
+    })
+
+    it('should throw when getting the raw database instance', () => {
+      assert.throws(() => dryRunDriver._getDbInstance(), /not available in dry-run mode/)
+    })
+  })
   })
 }

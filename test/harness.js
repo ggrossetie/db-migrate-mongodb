@@ -18,12 +18,12 @@ const internals = {
   migrationTable: "migrations"
 }
 
-export function getDriver(connectionString) {
+export function getDriver(connectionString, { dryRun = false } = {}) {
   return connect({
     url: connectionString,
     database: "db_migrate_test",
     options: {
       directConnection: true
     }
-  }, internals)
+  }, { ...internals, seedTable: "seeds", dryRun })
 }
