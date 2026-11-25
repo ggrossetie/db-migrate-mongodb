@@ -5,6 +5,7 @@
 ### Bug Fixes
 
 * Honor `--dry-run` again ([#2](https://github.com/ggrossetie/db-migrate-mongodb/issues/2)). Write operations are logged and skipped, and `_getDbInstance()` throws because operations on the raw database instance cannot be intercepted
+* Fix `dropDatabase` to call the method on the `Db` object instead of `MongoClient`
 
 ## 2.0.0 (2026-02-10)
 

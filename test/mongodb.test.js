@@ -123,6 +123,25 @@ for (const version of mongoVersions) {
     }
   })
 
+  it('should drop a database', async () => {
+    const connectionString = container.getConnectionString()
+    const driver = getDriver(connectionString)
+    try {
+      const mongo = driver.connection.db('db_migrate_test_drop')
+      await mongo.createCollection('events')
+      assert.deepEqual((await mongo.collections()).map(c => c.collectionName), ['events'])
+      await driver.dropDatabase('db_migrate_test_drop')
+      assert.deepEqual(await mongo.collections(), [])
+      await mongo.createCollection('events')
+      await new Promise((resolve, reject) => {
+        driver.dropDatabase('db_migrate_test_drop', (error) => error ? reject(error) : resolve())
+      })
+      assert.deepEqual(await mongo.collections(), [])
+    } finally {
+      await driver.close()
+    }
+  })
+
   describe('dry run', () => {
     let driver
     let dryRunDriver
