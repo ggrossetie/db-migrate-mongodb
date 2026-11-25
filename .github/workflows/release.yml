@@ -21,7 +21,7 @@ env:
 jobs:
   release:
     name: Release
-    if: github.ref_name == 'master' && github.repository_owner == 'ggrossetie'
+    if: github.ref_name == 'main' && github.repository_owner == 'ggrossetie'
     runs-on: ubuntu-latest
     steps:
       - name: Validate version
