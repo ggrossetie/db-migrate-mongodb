@@ -1,4 +1,5 @@
 [![CI](https://github.com/ggrossetie/db-migrate-mongodb/actions/workflows/ci.yml/badge.svg)](https://github.com/ggrossetie/db-migrate-mongodb/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@ggrossetie/db-migrate-mongodb)](https://www.npmjs.com/package/@ggrossetie/db-migrate-mongodb)
 
 # @ggrossetie/db-migrate-mongodb
 
@@ -71,6 +72,22 @@ You can also replace `url` with `host`, `port`, `user` and `password`.
 }
 ```
 
+The following options are supported when `url` is not set.
+
+| Option           | Description                                                                                  |
+|------------------|----------------------------------------------------------------------------------------------|
+| `host`           | Host name, or a list of hosts (`"host:port"` strings or `{ "host", "port" }` objects). Defaults to `localhost` |
+| `hosts`          | Alias of `host` for a list of hosts                                                          |
+| `port`           | Port used when a host does not define one. Defaults to `27017`                               |
+| `user`, `password` | Credentials, special characters are encoded for you                                        |
+| `authSource`     | Database used to authenticate (only applied with `user` and `password`)                      |
+| `replicaSet`     | Name of the replica set                                                                      |
+| `ssl`            | Set to `true` to enable TLS                                                                  |
+
+In both forms, `options` is passed as is to the [`MongoClient`](https://mongodb.github.io/node-mongodb-native/) constructor.
+
+The `database` is optional. Without it, the MongoDB driver falls back to the database of the connection string, or `test`.
+
 ### Dry run
 
 With `db-migrate up --dry-run`, the driver logs and skips every write operation (`createCollection`, `insert`, `addIndex`...), and these methods resolve to `undefined`.
@@ -97,6 +114,12 @@ The driver supports both. The state is stored in the `migrations_state` collecti
 Upgrading db-migrate from 0.11 does not require any change, the migrations already recorded in the `migrations` collection are kept.
 
 Migrations must use `_meta.version: 1` (the default). The version 2 format lets db-migrate learn a relational schema (tables, columns, foreign keys), which does not apply to MongoDB.
+
+## Contributing
+
+Contributions are welcome! Read the [contributing guide](CONTRIBUTING.md) to learn how to run the tests, write commit messages, update the changelog and how releases are published.
+
+The notable changes of each version are listed in the [changelog](CHANGELOG.md).
 
 ## License
 
