@@ -50,7 +50,7 @@ Configure your `database.json`:
 }
 ```
 
-Both object forms matter with db-migrate 0.11.x.
+Both object forms matter with db-migrate 0.11.x and 1.x.
 
 - A string `driver` is prefixed with `db-migrate-`, so a scoped package name cannot be resolved. The `require` form loads the package as is.
 - A string `url` is parsed by db-migrate, which then replaces `driver` with the URL protocol (`mongodb`) and removes `url`. The `value` form passes the connection string to this driver untouched.
@@ -87,6 +87,16 @@ exports.up = async function (db) {
   await db._getDbInstance().collection('users').updateMany({}, { $set: { active: true } })
 }
 ```
+
+## Compatibility with db-migrate
+
+The driver is tested against db-migrate 0.11 and 1.9.
+
+Since version 1.0, db-migrate keeps a state next to the migrations and locks the database while migrating, so concurrent processes do not run the same migrations twice.
+The driver supports both. The state is stored in the `migrations_state` collection (see the `--state-table` option of db-migrate), which is created on the first run.
+Upgrading db-migrate from 0.11 does not require any change, the migrations already recorded in the `migrations` collection are kept.
+
+The migrations of db-migrate using `_meta.version: 2` rely on a relational schema and are not supported.
 
 ## License
 
