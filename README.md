@@ -39,9 +39,34 @@ Configure your `database.json`:
 {
   "defaultEnv": "dev",
   "dev": {
-    "driver": "@ggrossetie/db-migrate-mongodb",
+    "driver": {
+      "require": "@ggrossetie/db-migrate-mongodb"
+    },
     "database": "my_database",
-    "url": "mongodb://localhost:27017/my_database"
+    "url": {
+      "value": "mongodb://localhost:27017/my_database"
+    }
+  }
+}
+```
+
+Both object forms matter with db-migrate 0.11.x.
+
+- A string `driver` is prefixed with `db-migrate-`, so a scoped package name cannot be resolved. The `require` form loads the package as is.
+- A string `url` is parsed by db-migrate, which then replaces `driver` with the URL protocol (`mongodb`) and removes `url`. The `value` form passes the connection string to this driver untouched.
+
+You can also replace `url` with `host`, `port`, `user` and `password`.
+
+```json
+{
+  "defaultEnv": "dev",
+  "dev": {
+    "driver": {
+      "require": "@ggrossetie/db-migrate-mongodb"
+    },
+    "database": "my_database",
+    "host": "localhost",
+    "port": 27017
   }
 }
 ```
