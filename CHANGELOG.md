@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.1.0 (2026-11-25)
+
 ### Features
 
 * Support the state management and the migration lock of db-migrate >= 1.0 (tested against db-migrate 0.11 and 1.9)
